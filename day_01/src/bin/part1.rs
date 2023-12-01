@@ -5,14 +5,13 @@ fn main() {
 }
 
 fn part1(input: &str) -> u32 {
-    input
-        .lines()
-        .map(|line| {
-            let first_digit = line.chars().find(|c| c.is_ascii_digit()).unwrap();
-            let last_digit = line.chars().rev().find(|c| c.is_ascii_digit()).unwrap();
-            format!("{first_digit}{last_digit}").parse::<u32>().unwrap()
-        })
-        .sum()
+    input.lines().map(process_line).sum()
+}
+
+fn process_line(line: &str) -> u32 {
+    let first_digit = line.chars().find(char::is_ascii_digit).unwrap();
+    let last_digit = line.chars().rev().find(char::is_ascii_digit).unwrap();
+    format!("{first_digit}{last_digit}").parse().unwrap()
 }
 
 #[cfg(test)]
