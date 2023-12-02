@@ -3,7 +3,7 @@ use nom::{
     bytes::complete::tag,
     character::complete::{alpha1, digit1},
     multi::separated_list1,
-    sequence::tuple,
+    sequence::{preceded, separated_pair, tuple},
 };
 
 fn main() {
@@ -17,28 +17,26 @@ fn part2(input: &str) -> u32 {
 }
 
 fn parse_line(line: &str) -> Vec<(u32, &str)> {
-    tuple::<_, _, (), _>((
-        tag("Game "),
-        digit1,
-        tag(": "),
+    preceded::<_, _, _, (), _, _>(
+        tuple((tag("Game "), digit1, tag(": "))),
         separated_list1(
             alt((tag("; "), tag(", "))),
-            tuple((digit1, tag(" "), alpha1)),
+            separated_pair(digit1, tag(" "), alpha1),
         ),
-    ))(line)
+    )(line)
     .unwrap()
     .1
-     .3
     .into_iter()
-    .map(|(amount, _, color)| (amount.parse().unwrap(), color))
+    .map(|(amount, color)| (amount.parse().unwrap(), color))
     .collect()
 }
 
-fn process_line(sets: Vec<(u32, &str)>) -> u32 {
+fn process_line(cubes: Vec<(u32, &str)>) -> u32 {
     ["red", "green", "blue"]
         .iter()
         .map(|target_color| {
-            sets.iter()
+            cubes
+                .iter()
                 .filter(|(_, color)| color == target_color)
                 .map(|(amount, _)| amount)
                 .max()

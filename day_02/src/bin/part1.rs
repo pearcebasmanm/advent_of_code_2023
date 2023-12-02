@@ -3,7 +3,7 @@ use nom::{
     bytes::complete::tag,
     character::complete::{alpha1, digit1},
     multi::separated_list0,
-    sequence::tuple,
+    sequence::{delimited, separated_pair, tuple},
 };
 
 fn main() {
@@ -22,21 +22,20 @@ fn part1(input: &str) -> u32 {
 }
 
 fn parse_line(line: &str) -> (u32, Vec<(u32, &str)>) {
-    let (_, (_, id, _, sets)) = tuple::<_, _, (), _>((
-        tag("Game "),
-        digit1,
-        tag(": "),
+    let (id, sets) = tuple::<_, _, (), _>((
+        delimited(tag("Game "), digit1, tag(": ")),
         separated_list0(
             alt((tag("; "), tag(", "))),
-            tuple((digit1, tag(" "), alpha1)),
+            separated_pair(digit1, tag(" "), alpha1),
         ),
     ))(line)
-    .unwrap();
+    .unwrap()
+    .1;
 
     let id = id.parse().unwrap();
     let sets = sets
         .into_iter()
-        .map(|(amount, _, color)| (amount.parse().unwrap(), color))
+        .map(|(amount, color)| (amount.parse().unwrap(), color))
         .collect();
     (id, sets)
 }
