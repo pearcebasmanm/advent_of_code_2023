@@ -4,6 +4,7 @@ use nom::{
     character::complete::{self, alpha1},
     multi::separated_list0,
     sequence::{delimited, separated_pair, tuple},
+    IResult,
 };
 
 fn main() {
@@ -15,25 +16,25 @@ fn main() {
 fn part1(input: &str) -> u32 {
     input
         .lines()
-        .map(parse_line)
+        .map(|line| parse_line(line).unwrap().1)
         .filter(|(_, batch)| is_valid(batch))
         .map(|(id, _)| id)
         .sum()
 }
 
-fn parse_line(line: &str) -> (u32, Vec<(u32, &str)>) {
-    tuple::<_, _, (), _>((
+type Cubes<'a> = (u32, &'a str);
+
+fn parse_line(line: &str) -> IResult<&str, (u32, Vec<Cubes>)> {
+    tuple((
         delimited(tag("Game "), complete::u32, tag(": ")),
         separated_list0(
             alt((tag("; "), tag(", "))),
             separated_pair(complete::u32, tag(" "), alpha1),
         ),
     ))(line)
-    .unwrap()
-    .1
 }
 
-fn is_valid(sets: &[(u32, &str)]) -> bool {
+fn is_valid(sets: &[Cubes]) -> bool {
     sets.iter()
         .all(|set| matches!(set, (1..=12, "red") | (1..=13, "green") | (1..=14, "blue")))
 }

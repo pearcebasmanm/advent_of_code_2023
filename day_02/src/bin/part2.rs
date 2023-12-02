@@ -4,6 +4,7 @@ use nom::{
     character::complete::{self, alpha1, digit1},
     multi::separated_list1,
     sequence::{preceded, separated_pair, tuple},
+    IResult,
 };
 
 fn main() {
@@ -13,22 +14,26 @@ fn main() {
 }
 
 fn part2(input: &str) -> u32 {
-    input.lines().map(parse_line).map(process_line).sum()
+    input
+        .lines()
+        .map(|line| parse_line(line).unwrap().1)
+        .map(process_line)
+        .sum()
 }
 
-fn parse_line(line: &str) -> Vec<(u32, &str)> {
-    preceded::<_, _, _, (), _, _>(
+type Cubes<'a> = (u32, &'a str);
+
+fn parse_line(line: &str) -> IResult<&str, Vec<Cubes>> {
+    preceded(
         tuple((tag("Game "), digit1, tag(": "))),
         separated_list1(
             alt((tag("; "), tag(", "))),
             separated_pair(complete::u32, tag(" "), alpha1),
         ),
     )(line)
-    .unwrap()
-    .1
 }
 
-fn process_line(cubes: Vec<(u32, &str)>) -> u32 {
+fn process_line(cubes: Vec<Cubes>) -> u32 {
     ["red", "green", "blue"]
         .iter()
         .map(|target_color| {

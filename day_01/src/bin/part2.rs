@@ -20,7 +20,7 @@ fn process_line(line: &str) -> u32 {
                 .iter()
                 .position(|&digit| line[start..].starts_with(digit))
         })
-        .map(|index| DIGITS[index % 9])
+        .map(|index| index as u32 % 9 + 1)
         .unwrap();
     let last_digit = (0..line.len())
         .rev()
@@ -29,9 +29,9 @@ fn process_line(line: &str) -> u32 {
                 .iter()
                 .position(|&digit| line[..=end].ends_with(digit))
         })
-        .map(|index| DIGITS[index % 9])
+        .map(|index| index as u32 % 9 + 1)
         .unwrap();
-    format!("{first_digit}{last_digit}").parse().unwrap()
+    first_digit * 10 + last_digit
 }
 
 #[cfg(test)]
