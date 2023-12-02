@@ -1,7 +1,7 @@
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{alpha1, digit1},
+    character::complete::{self, alpha1},
     multi::separated_list0,
     sequence::{delimited, separated_pair, tuple},
 };
@@ -22,22 +22,15 @@ fn part1(input: &str) -> u32 {
 }
 
 fn parse_line(line: &str) -> (u32, Vec<(u32, &str)>) {
-    let (id, sets) = tuple::<_, _, (), _>((
-        delimited(tag("Game "), digit1, tag(": ")),
+    tuple::<_, _, (), _>((
+        delimited(tag("Game "), complete::u32, tag(": ")),
         separated_list0(
             alt((tag("; "), tag(", "))),
-            separated_pair(digit1, tag(" "), alpha1),
+            separated_pair(complete::u32, tag(" "), alpha1),
         ),
     ))(line)
     .unwrap()
-    .1;
-
-    let id = id.parse().unwrap();
-    let sets = sets
-        .into_iter()
-        .map(|(amount, color)| (amount.parse().unwrap(), color))
-        .collect();
-    (id, sets)
+    .1
 }
 
 fn is_valid(sets: &[(u32, &str)]) -> bool {

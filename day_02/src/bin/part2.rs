@@ -1,7 +1,7 @@
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{alpha1, digit1},
+    character::complete::{self, alpha1, digit1},
     multi::separated_list1,
     sequence::{preceded, separated_pair, tuple},
 };
@@ -21,14 +21,11 @@ fn parse_line(line: &str) -> Vec<(u32, &str)> {
         tuple((tag("Game "), digit1, tag(": "))),
         separated_list1(
             alt((tag("; "), tag(", "))),
-            separated_pair(digit1, tag(" "), alpha1),
+            separated_pair(complete::u32, tag(" "), alpha1),
         ),
     )(line)
     .unwrap()
     .1
-    .into_iter()
-    .map(|(amount, color)| (amount.parse().unwrap(), color))
-    .collect()
 }
 
 fn process_line(cubes: Vec<(u32, &str)>) -> u32 {
