@@ -10,29 +10,26 @@ fn part2(input: &str) -> u32 {
     let numbers: Vec<Vec<Number>> = input
         .lines()
         .map(|line| {
-            let mut row = Vec::new();
-            let mut start = 0;
-            let mut num = None;
-            for (i, ch) in line.chars().enumerate() {
-                num = match (ch.is_ascii_digit(), num) {
-                    (true, Some(num)) => Some(num * 10 + ch.to_digit(10).unwrap()),
-                    (true, None) => {
-                        start = i;
-                        Some(ch.to_digit(10).unwrap())
-                    }
-                    (false, Some(value)) => {
-                        let range = start.saturating_sub(1)..=i;
-                        row.push(Number { value, range });
-                        None
-                    }
-                    (false, None) => None,
-                }
-            }
-            if let Some(value) = num {
-                let range = start.saturating_sub(1)..=(line.len() - 1);
-                row.push(Number { value, range });
-            }
-            row
+            line.chars()
+                .enumerate()
+                .scan((0, None), |(start_index, num), (i, ch)| {
+                    match (ch.is_ascii_digit(), &num) {
+                        (true, Some(value)) => *num = Some(*value * 10 + ch.to_digit(10).unwrap()),
+                        (true, None) => {
+                            *start_index = i;
+                            *num = Some(ch.to_digit(10).unwrap())
+                        }
+                        (false, Some(value)) => {
+                            let range = start_index.saturating_sub(1)..=i;
+                            let value = *value;
+                            *num = None;
+                            return Some(Number { value, range });
+                        }
+                        (false, None) => {}
+                    };
+                    None
+                })
+                .collect()
         })
         .collect();
     let valid_row = |row: &i32| (0..(numbers.len() as i32)).contains(row);
