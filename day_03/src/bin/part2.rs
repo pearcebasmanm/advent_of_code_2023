@@ -1,4 +1,4 @@
-use std::{ops::RangeInclusive, str::FromStr};
+use std::ops::RangeInclusive;
 
 fn main() {
     let input = include_str!("../../input.txt");
@@ -7,89 +7,69 @@ fn main() {
 }
 
 fn part2(input: &str) -> u32 {
-    let schematic: Schematic = input.parse().unwrap();
-    schematic.part_number_sum()
-}
-
-struct Schematic {
-    numbers: Vec<Vec<Number>>,
-    gears: Vec<Vec<usize>>,
+    let numbers: Vec<Vec<Number>> = input
+        .lines()
+        .map(|line| {
+            let mut row = Vec::new();
+            let mut start = 0;
+            let mut num = None;
+            for (i, ch) in line.chars().enumerate() {
+                num = match (ch.is_ascii_digit(), num) {
+                    (true, Some(num)) => Some(num * 10 + ch.to_digit(10).unwrap()),
+                    (true, None) => {
+                        start = i;
+                        Some(ch.to_digit(10).unwrap())
+                    }
+                    (false, Some(value)) => {
+                        let range = start.saturating_sub(1)..=i;
+                        row.push(Number { value, range });
+                        None
+                    }
+                    (false, None) => None,
+                }
+            }
+            if let Some(value) = num {
+                let range = start.saturating_sub(1)..=(line.len() - 1);
+                row.push(Number { value, range });
+            }
+            row
+        })
+        .collect();
+    let valid_row = |row: &i32| (0..(numbers.len() as i32)).contains(row);
+    input
+        .lines()
+        .map(|line| {
+            line.chars()
+                .enumerate()
+                .filter(|&(_, c)| c == '*')
+                .map(|(i, _)| i)
+        })
+        .enumerate()
+        .map(|(i, row)| {
+            row.into_iter()
+                .map(|gear| {
+                    [-1, 0, 1]
+                        .into_iter()
+                        .map(|row_offset| i as i32 + row_offset)
+                        .filter(valid_row)
+                        .flat_map(|row_index| {
+                            numbers[row_index as usize]
+                                .iter()
+                                .filter(|number| number.range.contains(&gear))
+                                .map(|number| number.value)
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .filter(|parts| parts.len() == 2)
+                .map(|parts| parts[0] * parts[1])
+                .sum::<u32>()
+        })
+        .sum()
 }
 
 struct Number {
     value: u32,
     range: RangeInclusive<usize>,
-}
-
-impl Schematic {
-    fn part_number_sum(&self) -> u32 {
-        let mut sum = 0;
-        for (i, row) in self.gears.iter().enumerate() {
-            for gear in row {
-                let part_numbers: Vec<_> = [-1, 0, 1]
-                    .into_iter()
-                    .map(|row_offset| i as i32 + row_offset)
-                    .filter(|row_index| (0..(self.gears.len() as i32)).contains(row_index))
-                    .flat_map(|row_index| {
-                        self.numbers[row_index as usize]
-                            .iter()
-                            .filter(|number| number.range.contains(gear))
-                            .map(|number| number.value)
-                    })
-                    .collect();
-                if let [first_part, second_part] = part_numbers[..] {
-                    sum += first_part * second_part;
-                }
-            }
-        }
-        sum
-    }
-}
-
-impl FromStr for Schematic {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let numbers = s
-            .lines()
-            .map(|line| {
-                let mut row = Vec::new();
-                let mut start = 0;
-                let mut num = None;
-                for (i, ch) in line.chars().enumerate() {
-                    num = match (ch.is_ascii_digit(), num) {
-                        (true, Some(num)) => Some(num * 10 + ch.to_digit(10).unwrap()),
-                        (true, None) => {
-                            start = i;
-                            Some(ch.to_digit(10).unwrap())
-                        }
-                        (false, Some(value)) => {
-                            let range = start.saturating_sub(1)..=i;
-                            row.push(Number { value, range });
-                            None
-                        }
-                        (false, None) => None,
-                    }
-                }
-                if let Some(value) = num {
-                    let range = start.saturating_sub(1)..=(line.len() - 1);
-                    row.push(Number { value, range });
-                }
-                row
-            })
-            .collect();
-        let gears = s
-            .lines()
-            .map(|line| {
-                line.chars()
-                    .enumerate()
-                    .filter(|&(_, c)| c == '*')
-                    .map(|(i, _)| i)
-                    .collect()
-            })
-            .collect();
-        Ok(Schematic { numbers, gears })
-    }
 }
 
 #[cfg(test)]
