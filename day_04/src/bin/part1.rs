@@ -1,6 +1,6 @@
 use nom::{
     bytes::complete::tag,
-    character::complete::{self, digit1, multispace1},
+    character::complete::{digit1, multispace1},
     multi::separated_list1,
     sequence::{preceded, separated_pair, tuple},
     IResult,
@@ -20,18 +20,18 @@ fn part1(input: &str) -> u32 {
         .sum()
 }
 
-fn parse_line(line: &str) -> IResult<&str, (Vec<u32>, Vec<u32>)> {
+fn parse_line(line: &str) -> IResult<&str, (Vec<&str>, Vec<&str>)> {
     preceded(
         tuple((tag("Card"), multispace1, digit1, tag(":"), multispace1)),
         separated_pair(
-            separated_list1(multispace1, complete::u32),
+            separated_list1(multispace1, digit1),
             tuple((multispace1, tag("|"), multispace1)),
-            separated_list1(multispace1, complete::u32),
+            separated_list1(multispace1, digit1),
         ),
     )(line)
 }
 
-fn process_line(input: (Vec<u32>, Vec<u32>)) -> u32 {
+fn process_line(input: (Vec<&str>, Vec<&str>)) -> u32 {
     let (winning_numbers, numbers) = input;
     let matches = numbers
         .into_iter()

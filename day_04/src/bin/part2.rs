@@ -1,8 +1,6 @@
-use std::collections::BTreeMap;
-
 use nom::{
     bytes::complete::tag,
-    character::complete::{self, multispace1},
+    character::complete::{digit1, multispace1},
     multi::separated_list1,
     sequence::{preceded, separated_pair, tuple},
     IResult,
@@ -15,39 +13,39 @@ fn main() {
 }
 
 fn part2(input: &str) -> u32 {
-    let mut map = BTreeMap::new();
     input
         .lines()
-        .map(|line| parse_line(line).unwrap().1)
-        .map(|processed| process(&mut map, processed))
+        .enumerate()
+        .map(|(i, line)| (i, parse_line(line).unwrap().1))
+        .scan(vec![1; input.lines().count()], |amounts, input| {
+            Some(process(amounts, input))
+        })
         .sum()
 }
 
-fn parse_line(line: &str) -> IResult<&str, (u32, Vec<u32>, Vec<u32>)> {
-    let (remainder, (card, (winning_numbers, numbers))) = separated_pair(
-        preceded(tuple((tag("Card"), multispace1)), complete::u32),
-        tuple((tag(":"), multispace1)),
+fn parse_line(line: &str) -> IResult<&str, (Vec<&str>, Vec<&str>)> {
+    preceded(
+        tuple((tag("Card"), multispace1, digit1, tag(":"), multispace1)),
         separated_pair(
-            separated_list1(multispace1, complete::u32),
+            separated_list1(multispace1, digit1),
             tuple((multispace1, tag("|"), multispace1)),
-            separated_list1(multispace1, complete::u32),
+            separated_list1(multispace1, digit1),
         ),
-    )(line)?;
-    Ok((remainder, (card, winning_numbers, numbers)))
+    )(line)
 }
 
-fn process(map: &mut BTreeMap<u32, u32>, input: (u32, Vec<u32>, Vec<u32>)) -> u32 {
-    let (card, winning_numbers, numbers) = input;
+fn process(map: &mut [u32], input: (usize, (Vec<&str>, Vec<&str>))) -> u32 {
+    let (index, (winning_numbers, numbers)) = input;
 
-    let amount_of_current = 1 + map.remove(&card).unwrap_or(0);
+    let amount_of_current = map[index];
 
     let matches = numbers
         .into_iter()
         .filter(|number| winning_numbers.contains(number))
-        .count() as u32;
+        .count();
 
-    for card in (1..=matches).map(|i| card + i) {
-        *map.entry(card).or_insert(0) += amount_of_current;
+    for bonus_cards_index in (1..=matches).map(|i| index + i) {
+        map[bonus_cards_index] += amount_of_current;
     }
 
     amount_of_current

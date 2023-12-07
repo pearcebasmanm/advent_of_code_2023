@@ -10,26 +10,33 @@ fn part2(input: &str) -> u32 {
     let numbers: Vec<Vec<Number>> = input
         .lines()
         .map(|line| {
-            line.chars()
+            let mut start_index = 0;
+            let mut num = None;
+            let mut numbers: Vec<_> = line
+                .chars()
                 .enumerate()
-                .scan((0, None), |(start_index, num), (i, ch)| {
-                    match (ch.is_ascii_digit(), &num) {
-                        (true, Some(value)) => *num = Some(*value * 10 + ch.to_digit(10).unwrap()),
+                .filter_map(|(i, ch)| {
+                    match (ch.is_ascii_digit(), num) {
+                        (true, Some(value)) => num = Some(value * 10 + ch.to_digit(10).unwrap()),
                         (true, None) => {
-                            *start_index = i;
-                            *num = Some(ch.to_digit(10).unwrap())
+                            start_index = i;
+                            num = Some(ch.to_digit(10).unwrap());
                         }
                         (false, Some(value)) => {
                             let range = start_index.saturating_sub(1)..=i;
-                            let value = *value;
-                            *num = None;
+                            num = None;
                             return Some(Number { value, range });
                         }
                         (false, None) => {}
                     };
                     None
                 })
-                .collect()
+                .collect();
+            if let Some(value) = num {
+                let range = start_index.saturating_sub(1)..=(line.len() - 1);
+                numbers.push(Number { value, range });
+            }
+            numbers
         })
         .collect();
     let valid_row = |row: &i32| (0..(numbers.len() as i32)).contains(row);
@@ -42,28 +49,26 @@ fn part2(input: &str) -> u32 {
                 .map(|(i, _)| i)
         })
         .enumerate()
-        .map(|(i, row)| {
-            row.into_iter()
-                .map(|gear| {
-                    [-1, 0, 1]
-                        .into_iter()
-                        .map(|row_offset| i as i32 + row_offset)
-                        .filter(valid_row)
-                        .flat_map(|row_index| {
-                            numbers[row_index as usize]
-                                .iter()
-                                .filter(|number| number.range.contains(&gear))
-                                .map(|number| number.value)
-                        })
-                        .collect::<Vec<_>>()
+        .flat_map(|(i, row)| row.map(move |gear| (i, gear)))
+        .map(|(i, j)| {
+            [-1, 0, 1]
+                .into_iter()
+                .map(|row_offset| i as i32 + row_offset)
+                .filter(valid_row)
+                .flat_map(|row_index| {
+                    numbers[row_index as usize]
+                        .iter()
+                        .filter(|number| number.range.contains(&j))
+                        .map(|number| number.value)
                 })
-                .filter(|parts| parts.len() == 2)
-                .map(|parts| parts[0] * parts[1])
-                .sum::<u32>()
+                .collect::<Vec<_>>()
         })
+        .filter(|parts| parts.len() == 2)
+        .map(|parts| parts[0] * parts[1])
         .sum()
 }
 
+#[derive(Debug)]
 struct Number {
     value: u32,
     range: RangeInclusive<usize>,
