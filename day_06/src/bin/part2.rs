@@ -5,11 +5,6 @@ fn main() {
 }
 
 fn part2(input: &str) -> u64 {
-    let (time, distance) = parse(input);
-    process_race(time, distance)
-}
-
-fn parse(input: &str) -> (u64, u64) {
     let [time, distance] = input
         .lines()
         .map(|line| {
@@ -22,13 +17,9 @@ fn parse(input: &str) -> (u64, u64) {
                 .parse()
                 .unwrap()
         })
-        .collect::<Vec<_>>()
+        .collect::<Vec<u64>>()
         .try_into()
         .unwrap();
-    (time, distance)
-}
-
-fn process_race(time: u64, distance: u64) -> u64 {
     (0..=time)
         .filter(|hold| (time - hold) * hold > distance)
         .count() as u64
@@ -41,7 +32,7 @@ mod tests {
     const MOCK_INPUT: &str = "Time:      7  15   30
 Distance:  9  40  200";
 
-    const MOCK_SOLUTION: u64 = 288;
+    const MOCK_SOLUTION: u64 = 71503;
 
     #[test]
     fn test() {

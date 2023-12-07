@@ -1,6 +1,6 @@
 #![allow(clippy::single_range_in_vec_init)]
 
-use std::{cmp::Ordering, process::exit};
+use std::ops::RangeInclusive;
 
 use nom::{
     bytes::complete::{tag, take_till},
@@ -32,91 +32,116 @@ fn part2(input: &str) -> i64 {
                 .collect::<Vec<_>>()
         })
         .collect();
-    seed_groups
+
+    let mut ranges: Vec<_> = seed_groups
         .into_iter()
-        .map(|(start, length)| start..start + length)
-        .flat_map(|range| {
-            let mut ranges = vec![range];
-            println!("{ranges:?}");
-            for conversion in &conversions {
-                let mut next_ranges = Vec::new();
-                let mut i = 0;
-                while !ranges.iter().all(|range| {
-                    conversion
-                        .iter()
-                        .all(|(source, _)| source.end < range.start || range.end < source.start)
-                }) {
-                    println!("{ranges:?} {conversion:?}");
-                    i += 1;
-                    if i > 100 {
-                        println!("breaking");
-                        break;
-                    }
-                    for (source_range, offset) in conversion {
-                        let this_range = ranges[0].clone();
-                        let (overlap, remainder) = match (
-                            this_range.start.cmp(&source_range.start),
-                            this_range.end.cmp(&source_rang.end),
-                        ) {
-                            (
-                                Ordering::Less | Ordering::Equal,
-                                Ordering::Greater | Ordering::Equal,
-                            ) => (Some(this_range), Vec::new()),
-                            (Ordering::Less | Ordering::Equal, Ordering::Less) => (
-                                Some(this_range.start..source_range.end),
-                                vec![source_range.end..this_range.end],
-                            ),
-                            (Ordering::Greater, Ordering::Less | Ordering::Equal) => (
-                                Some(this_range.start..source_range.start),
-                                vec![source_range.start..this_range.end],
-                            ),
-                            (Ordering::Greater, Ordering::Less) => {
-                                if this_range.contains(&source_range.start)
-                                    && this_range.contains(&source_range.end)
-                                {
-                                    (
-                                        Some(source_range.start..source_range.end),
-                                        vec![
-                                            this_range.start..source_range.start,
-                                            source_range.end..this_range.end,
-                                        ],
-                                    )
-                                } else {
-                                    (None, vec![this_range])
-                                }
-                            }
-                        };
-                        if let Some(range) = overlap {
-                            next_ranges.push(range.start + offset..range.end + offset);
-                        }
-                        for range in remainder {
-                            ranges.push(range);
-                        }
-                        ranges.remove(0);
-                    }
-                }
-                ranges.append(&mut next_ranges);
+        .map(|(start, length)| start..=start + length - 1)
+        .collect();
+
+    for conversion in &conversions {
+        let mut i = 0;
+        let mut next_ranges = Vec::new();
+        println!("Next conversion");
+        loop {
+            if ranges.iter().all(|range| {
+                conversion
+                    .iter()
+                    .all(|(source, _)| overlap(range.clone(), source.clone()).0.is_none())
+            }) || ranges.is_empty()
+            {
+                break;
             }
-            ranges.into_iter().map(|range| range.start)
-        })
-        .min()
-        .unwrap()
+
+            i += 1;
+            if i > 100 {
+                break;
+            }
+
+            println!(
+                "RangeInclusives: {}",
+                ranges
+                    .iter()
+                    .map(|range| format!("{}..{}", range.start(), range.end()))
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            );
+            for (source_range, offset) in conversion {
+                if ranges.is_empty() {
+                    break;
+                }
+                let this_range = ranges[0].clone();
+                print!("Checking {this_range:?} & {source_range:?} | ");
+                let (overlap, remainder) = overlap(this_range, source_range.clone());
+                if let Some(range) = overlap {
+                    if !range.is_empty() {
+                        next_ranges.push(range.start() + offset..range.end() + offset);
+                    }
+                    print!("Overlap: {}..{}, ", range.start(), range.end());
+                }
+                for range in remainder {
+                    print!("Remainder: {range:?}, ");
+                    ranges.push(range);
+                }
+                println!();
+                ranges.remove(0);
+            }
+        }
+        ranges.append(&mut next_ranges);
+    }
+    ranges.into_iter().map(|range| range.start()).min().unwrap()
 }
 
-enum Overlap {
-    None,
-    Contains,
-    Contained,
-}
+fn overlap(
+    this: RangeInclusive<i64>,
+    other: RangeInclusive<i64>,
+) -> (Option<RangeInclusive<i64>>, Vec<RangeInclusive<i64>>) {
+    // use std::ops::Ordering::*;
+    // match (
+    //     this.start().cmp(&other.start()),
+    //     this.start().cmp(&other.end()),
+    //     this.end().cmp(&other.start()),
+    //     this.end().cmp(&other.end()),
+    // ) {
+    //     (Less | Equal, Less, )
+    // }
 
-fn overlap(left: Range<i64>, right: Range<i64>) -> Overlap {
-    if left.end < right.start || right.end < left.start {
-        Overlap::None
-    } else if left.start <= right.start && right.start <= left.start {
-        Overlap::Contains
-    } else if right.start <= left.start && left.start <= right.start {
-        Overlap::Contained
-    } else if 
+    // // no overlap
+    if this.end() < other.start() || other.end() < this.start() {
+        (None, vec![this])
+
+    // entirely contained
+    } else if other.start() <= this.start() && this.end() <= other.end() {
+        (Some(this), Vec::new())
+
+    // middle portion is contained
+    } else if this.start() <= other.start() && other.end() <= this.end() {
+        (
+            Some(other.clone()),
+            vec![*this.start()..=*other.start(), *other.end()..=*this.end()],
+        )
+
+    // rightmost portion is contained
+    } else if this.start() < other.start() {
+        (
+            Some(*other.start()..=*this.end()),
+            vec![*this.start()..=*other.start()],
+        )
+
+    // leftmost potion is contained
+    } else if other.end() < this.end() && this.end() != other.start() {
+        println!("there");
+        (
+            Some(*this.start()..*other.end()),
+            vec![other.end()..this.end()],
+        )
+
+    // I think I covered my bases, so never
+    } else {
+        panic!(
+            "{this:?} {other:?} | {}",
+            other.start() <= this.start() && this.end() <= other.end()
+        );
+    }
 }
 
 type Parsed = (Vec<(i64, i64)>, Vec<Vec<(i64, i64, i64)>>);
