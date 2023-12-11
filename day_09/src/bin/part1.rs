@@ -1,3 +1,5 @@
+use std::iter::successors;
+
 fn main() {
     let input = include_str!("../../input.txt");
     let result = part1(input);
@@ -13,21 +15,15 @@ fn parse_line(line: &str) -> Vec<i32> {
 }
 
 fn process_line(nums: Vec<i32>) -> i32 {
-    let mut derivatives = vec![nums];
-    loop {
-        let next: Vec<_> = derivatives
-            .last()
-            .unwrap()
-            .windows(2)
-            .map(|w| w[1] - w[0])
-            .collect();
-        if next.iter().all(|&num| num == 0) {
-            break;
+    successors(Some(nums), |nums| {
+        if nums.iter().all(|&num| num == 0) {
+            None
+        } else {
+            Some(nums.windows(2).map(|w| w[1] - w[0]).collect())
         }
-        derivatives.push(next);
-    }
-
-    derivatives.iter().map(|nums| nums.last().unwrap()).sum()
+    })
+    .map(|nums| *nums.last().unwrap())
+    .sum()
 }
 
 #[cfg(test)]
